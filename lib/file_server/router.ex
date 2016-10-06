@@ -1,5 +1,4 @@
 defmodule FileServer.Router do
-  use FileServer.AuthProxyPlug
   use Plug.Router
 
   import Plug.Conn

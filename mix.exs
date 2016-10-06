@@ -36,7 +36,6 @@ defmodule FileServer.Mixfile do
       {:ecto, "~> 2.1.0-rc.1", override: true},
       {:joken, "~> 1.3"},
       {:poison, "~> 2.2", override: true},
-      {:exactor, "~> 2.2"},
       {:arc, "~> 0.5.3"},
       {:arc_ecto, "~> 0.4.4"},
       {:zarex, "~> 0.3"},
