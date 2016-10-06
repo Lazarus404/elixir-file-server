@@ -28,7 +28,9 @@ defmodule FileServer.Router do
 
   @doc """
   Handles private (admin/sys/uploader) file uploads from token host
-  with fallback to Plug.Conn host
+  with fallback to Plug.Conn host.  If the parameter "CKEditorFuncNum"
+  is passed, then this is a CKEditor upload and thus an HTML template
+  is returned.
   """
   put "#{@v1}/upload/:type/*target" do
     host = get_host(conn)
@@ -38,7 +40,11 @@ defmodule FileServer.Router do
                             (if type == "asset", do: UploadAssets, else: UploadFiles), 
                             :store, 
                             [{file, %{url: host, asset_type: "site-#{type}", target: join_path([host, dir])}}]) do
-      send_json(conn, 201, %{folder: dir, value: file, id: "#{type}:" <> join_path(dir, file), type: FileList.file_type(file), status: "server"})
+      if Map.has_key?(conn.params, "CKEditorFuncNum") do
+        render(conn, 201, "uploaded.html", %{file: file, domain: "http://" <> host, func_num: conn.params["CKEditorFuncNum"]})
+      else
+        send_json(conn, 201, %{folder: dir, value: file, id: "#{type}:" <> join_path(dir, file), type: FileList.file_type(file), status: "server"})
+      end
     else e ->
       send_json(conn, 401, %{error: e})
     end
@@ -86,6 +92,15 @@ defmodule FileServer.Router do
       conn
       |> send_json(404, %{error: "Could not retrieve file", message: e})
     end
+  end
+
+  @doc """
+  Returns a valid CKEditor File Browser page
+  """
+  get "#{@v1}/browse", private: @skip_token_verification do
+    %{"CKEditorFuncNum" => func_num} = conn.params
+    host = get_host(conn)
+    render(conn, 200, "filebrowser.html", %{host: host, domain: "http://" <> host, func_num: conn.params["CKEditorFuncNum"]})
   end
 
   @doc """
@@ -282,13 +297,23 @@ defmodule FileServer.Router do
     end
   end
 
-  def get_path(type \\ "file") do
-    Application.get_env(:file_server, :fs_path).(type)
-  end
+  def get_path(type \\ "file"), do: Application.get_env(:file_server, :fs_path).(type)
+
+  def get_template_path, do: Application.get_env(:file_server, :template_path)
 
   # -------------------------------
   # Private functions
   # -------------------------------
+
+  defp render(conn, status, template, params \\ %{}) do
+    with {:ok, tmpl} <- File.read(Path.join(get_template_path, template)),
+         {:ok, map} <- parse_bb_params(params),
+         page when is_binary(page) <- :bbmustache.render(tmpl, map) do
+      send_resp(conn, status, page)
+    end
+  end
+
+  defp parse_bb_params(%{} = params), do: {:ok, Enum.map(params, fn {k, v} -> {String.to_char_list("#{k}"), v} end)}
 
   defp put_file_header(conn, path, stat) do
     conn
@@ -388,7 +413,7 @@ defmodule FileServer.Router do
       end
 
       Zipflow.Stream.init
-      |> Zipflow.OS.dir_entry(chunk_file, path)
+      |> Zipflow.OS.dir_entry(chunk_file, path, [rename: &Path.relative_to(&1, path)])
       |> Zipflow.Stream.flush(chunk_file)
       conn
     else

@@ -88,6 +88,16 @@ defmodule RetrieveTest do
   end
 
 
+  test "retrieval of CKEditor browse page", %{token: token} do
+    params = %{"CKEditorFuncNum" => "1234"}
+    conn = browse(token, params)
+
+    assert conn.resp_body |> String.starts_with? "<!DOCTYPE html>"
+    assert conn.state == :sent
+    assert conn.status == 200
+  end
+
+
   defp upload_file(token, path, file) do
     upload = %{"file" => %Plug.Upload{path: file, filename: String.split(file, "/") |> List.last}}
     call_with_token(token, :put, "upload/#{path}", upload)
@@ -95,6 +105,10 @@ defmodule RetrieveTest do
 
   defp fetch_file(token, path) do
     call_with_token(token, :get, "fetch/#{path}")
+  end
+
+  defp browse(token, params) do
+    call_with_token(token, :get, "browse", params)
   end
 
   defp call_with_token(token, type, path, params \\ %{}) when is_atom(type) and is_binary(token) and is_binary(path) do

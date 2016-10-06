@@ -41,7 +41,8 @@ defmodule FileServer.Mixfile do
       {:arc_ecto, "~> 0.4.4"},
       {:zarex, "~> 0.3"},
       {:mimerl, "~> 1.1"},
-      {:zipflow, github: "dgvncsz0f/zipflow"}
+      {:zipflow, github: "dgvncsz0f/zipflow"},
+      {:bbmustache, "~> 1.3"}
     ]
   end
 end

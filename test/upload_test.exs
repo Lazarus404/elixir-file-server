@@ -100,9 +100,21 @@ defmodule UploadTest do
     refute File.exists?(path)
   end
 
+  test "upload asset with CKEditor function num parameter", %{token: token} do
+    conn = upload_file(token, @type_asset, @example_file, true)
 
-  defp upload_file(token, path, file) do
-    upload = %{"file" => %Plug.Upload{path: file, filename: String.split(file, "/") |> List.last}}
+    path = Path.join([Router.get_path(@type_asset), @host, "#{@asset}"])
+    
+    assert conn.resp_body |> String.starts_with? "<!DOCTYPE html>"
+    assert conn.state == :sent
+    assert conn.status == 201
+    assert File.exists?(path)
+  end
+
+
+  defp upload_file(token, path, file, is_ckeditor \\ false) do
+    file = %Plug.Upload{path: file, filename: String.split(file, "/") |> List.last}
+    upload = if is_ckeditor, do: %{"file" => file, "CKEditorFuncNum" => "1234"}, else: %{"file" => file} 
     call_with_token(token, :put, "upload/#{path}", upload)
   end
 
